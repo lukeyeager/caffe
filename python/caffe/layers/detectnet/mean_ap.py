@@ -1,7 +1,6 @@
-import caffe
 import numpy as np
-import itertools
-import pdb
+
+import caffe
 
 MAX_BOXES = 50
 

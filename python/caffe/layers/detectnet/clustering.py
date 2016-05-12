@@ -1,7 +1,9 @@
-import caffe
-import numpy as np
-import cv2 as cv
 import math
+
+import cv2 as cv
+import numpy as np
+
+import caffe
 
 MAX_BOXES = 50
 
