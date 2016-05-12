@@ -1,66 +1,105 @@
-"""
-    This file has two layers :
-
-        1. ScoreDetections layer
-            - Marks up bbox predictions as true positive/ false positive and missed gtruth bbox as
-                true negatives
-            - bottom[0] - list of ground truth bbox
-                [batch_size x max_bbox_per_image x 5 (xl, yt, xr, yb, 0) ]
-            - bottom[1] - list of predicted bbox
-                [batch_size x max_bbox_per_image x 5 (xl, yt, xr, yb, confidence) ]
-            - top[0]- Marked up bbox
-                [ batch_size x max_bbox_per_image x 5 (xl, yt, xr, yb, class)]
-                class 1 - true positive, 2 - false positive, 3 - true negative
-        2. mAP layer
-            - calculates precision, recall, mean average precision from marked up bbox list
-            - bottom[0] - marked up bbox list
-                [ batch_size x max_bbox_per_image x 5(xl, yt, xr, yb, class) ]
-            - top[0] - mAP
-            - top[1] - precision
-            - top[2] - recall
-
-    Sample  prototxt definition:
-        layer {
-          type: 'Python'
-          name: 'score'
-          top: 'bbox_cl'
-          bottom: 'gt_bbox_list'
-          bottom: 'det_bbox_list'
-          python_param {
-            # the module name -- usually the filename -- that needs to be in $PYTHONPATH
-            module: 'mean_ap_layer'
-            # the layer name -- the class name in the module
-            layer: 'ScoreDetections'
-          }
-          include: { phase: TEST }
-        }
-
-        layer {
-          type: 'Python'
-          name: 'mAP'
-          top: 'mAP'
-          top: 'precision'
-          top: 'recall'
-          bottom: 'bbox_cl'
-          python_param {
-            # the module name -- usually the filename -- that needs to be in $PYTHONPATH
-            module: 'mean_ap_layer'
-            # the layer name -- the class name in the module
-            layer: 'mAP'
-            # parameters - img_size_x, img_size_y, stride
-            param_str : '1248,352,16'
-          }
-          include: { phase: TEST }
-        }
-"""
-
-
 import caffe
 import numpy as np
 import itertools
 import pdb
 
 MAX_BOXES = 50
+
+class ScoreDetections(caffe.Layer):
+    """
+    * Marks up bbox predictions as true positive/ false positive and missed gtruth bbox as
+        true negatives
+    * bottom[0] - list of ground truth bbox
+        [batch_size x max_bbox_per_image x 5 (xl, yt, xr, yb, 0) ]
+    * bottom[1] - list of predicted bbox
+        [batch_size x max_bbox_per_image x 5 (xl, yt, xr, yb, confidence) ]
+    * top[0]- Marked up bbox
+        [ batch_size x max_bbox_per_image x 5 (xl, yt, xr, yb, class)]
+        class 1 - true positive, 2 - false positive, 3 - true negative
+
+    Example prototxt definition:
+
+    layer {
+        type: 'Python'
+        name: 'score'
+        top: 'bbox_cl'
+        bottom: 'gt_bbox_list'
+        bottom: 'det_bbox_list'
+        python_param {
+            module: 'caffe.layers.detectnet.mean_ap'
+            layer: 'ScoreDetections'
+        }
+        include: { phase: TEST }
+    }
+    """
+
+    def setup(self, bottom, top):
+        pass
+
+    def reshape(self, bottom, top):
+        n_images= bottom[0].data.shape[0]
+        # Assuming that max booxes per image are MAX_BOXES
+        top[0].reshape(n_images,MAX_BOXES,5)
+        assert(bottom[0].data.shape[0]==bottom[1].data.shape[0])," No of images not matching !!"
+
+    def forward(self, bottom, top):
+        bbox_list=score_det(bottom[0].data , bottom[1].data )
+        top[0].data[...] = bbox_list
+
+    def backward(self, top, propagate_down, bottom):
+        pass
+
+class mAP(caffe.Layer):
+    """
+    * calculates precision, recall, mean average precision from marked up bbox list
+    * bottom[0] - marked up bbox list
+        [ batch_size x max_bbox_per_image x 5(xl, yt, xr, yb, class) ]
+    * top[0] - mAP
+    * top[1] - precision
+    * top[2] - recall
+
+    Example prototxt definition:
+
+    layer {
+        type: 'Python'
+        name: 'mAP'
+        top: 'mAP'
+        top: 'precision'
+        top: 'recall'
+        bottom: 'bbox_cl'
+        python_param {
+            module: 'caffe.layers.detectnet.mean_ap'
+            layer: 'mAP'
+            # parameters - img_size_x, img_size_y, stride
+            param_str : '1248,352,16'
+        }
+        include: { phase: TEST }
+    }
+    """
+
+    def setup(self, bottom, top):
+        pass
+
+    def reshape(self, bottom, top):
+        top[0].reshape(1)
+        top[1].reshape(1)
+        top[2].reshape(1)
+        self.false_positives=0
+        self.true_positives=0
+        self.true_negatives=0
+        self.precision=0
+        self.recall=0
+        self.avp=0
+
+    def forward(self, bottom, top):
+        calcmAP(bottom[0].data,self)
+        top[0].data[...] = self.avp
+        top[1].data[...] = self.precision
+        top[2].data[...] = self.recall
+
+
+    def backward(self, top, propagate_down, bottom):
+        pass
 
 def iou(det, rhs):
     x_overlap = max(0, min(det[2], rhs[2]) - max(det[0], rhs[0]))
@@ -125,49 +164,3 @@ def calcmAP(scored_detections, self) :
     self.precision = divide_zero_is_zero(self.true_positives, self.true_positives+self.false_positives)*100.00
     self.recall = divide_zero_is_zero(self.true_positives, self.true_positives+self.true_negatives)*100.00
     self.avp = self.precision * self.recall / 100.0
-
-
-
-class ScoreDetections(caffe.Layer):
-
-    def setup(self, bottom, top):
-        pass
-
-    def reshape(self, bottom, top):
-        n_images= bottom[0].data.shape[0]
-        # Assuming that max booxes per image are MAX_BOXES
-        top[0].reshape(n_images,MAX_BOXES,5)
-        assert(bottom[0].data.shape[0]==bottom[1].data.shape[0])," No of images not matching !!"
-
-    def forward(self, bottom, top):
-        bbox_list=score_det(bottom[0].data , bottom[1].data )
-        top[0].data[...] = bbox_list
-
-    def backward(self, top, propagate_down, bottom):
-        pass
-
-class mAP(caffe.Layer):
-
-    def setup(self, bottom, top):
-        pass
-
-    def reshape(self, bottom, top):
-        top[0].reshape(1)
-        top[1].reshape(1)
-        top[2].reshape(1)
-        self.false_positives=0
-        self.true_positives=0
-        self.true_negatives=0
-        self.precision=0
-        self.recall=0
-        self.avp=0
-
-    def forward(self, bottom, top):
-        calcmAP(bottom[0].data,self)
-        top[0].data[...] = self.avp
-        top[1].data[...] = self.precision
-        top[2].data[...] = self.recall
-
-
-    def backward(self, top, propagate_down, bottom):
-        pass

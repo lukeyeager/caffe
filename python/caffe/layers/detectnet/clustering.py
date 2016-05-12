@@ -1,59 +1,3 @@
-"""
-    This file has two layers :
-        1.  ClusterGroundtruth layer
-            - converts ground truth labels from grid format to list
-            - bottom[0] - coverage-label [ batch_size x grid_sz_x x grid_sz_y x 1 ]
-            - bottom[1] - bbox-label [batch_size x grid_sz_x x grid_sz_y x 4 (xl, yt, xr, yb)]
-            - top [0] - list of groundtruth bbox
-                [ batch_size x max_bbox_per_image x 5 (xl, yt, xr, yb, 0)]
-        2. ClusterDetections layer
-            - convert network output in grid format to list using group rectangles clustering.
-            - bottom[0] - predicted coverage [ batch_size x grid_sz_x x grid_sz_y x 1 ]
-            - bottom[1] - predicted bbox [batch_size x grid_sz_x x grid_sz_y x 4 (xl, yt, xr, yb)]
-            - top [0] - list of predicted bbox
-                [ batch_size x max_bbox_per_image x 5 (xl, yt, xr, yb, confidence) ]
-
-    Sample  prototxt definition:
-
-    layer {
-      type: 'Python'
-      name: 'cluster_gt'
-       # gt_bbox_list is a batch_size x MAX_BOXES x 5 blob
-      top: 'gt_bbox_list'
-      bottom: 'coverage-label'
-      bottom: 'bbox-label'
-      python_param {
-        # the module name -- usually the filename -- that needs to be in $PYTHONPATH
-        module: 'cluster_boxes_layer'
-        # the layer name -- the class name in the module
-        layer: 'ClusterGroundtruth'
-        # parameters - img_size_x, img_size_y, stride,
-        param_str : '1248,352,16'
-      }
-      include: { phase: TEST }
-    }
-
-    layer {
-      type: 'Python'
-      name: 'cluster'
-       # det_bbox_list is a batch_size x MAX_BOXES x 5 blob
-      top: 'det_bbox_list'
-      bottom: 'coverage'
-      bottom: 'bbox/regressor'
-      python_param {
-        # the module name -- usually the filename -- that needs to be in $PYTHONPATH
-        module: 'cluster_boxes_layer'
-        # the layer name -- the class name in the module
-        layer: 'ClusterDetections'
-        # parameters - img_size_x, img_size_y, stride,
-        # gridbox_cvg_threshold,gridbox_rect_threshold,gridbox_rect_eps,min_height
-        param_str : '1248,352,16,0.05,1,0.025,22'
-      }
-      include: { phase: TEST }
-    }
-"""
-
-
 import caffe
 import numpy as np
 import cv2 as cv
@@ -61,6 +5,114 @@ import math
 
 MAX_BOXES = 50
 
+class ClusterGroundtruth(caffe.Layer):
+    """
+    * converts ground truth labels from grid format to list
+    * bottom[0] - coverage-label [ batch_size x grid_sz_x x grid_sz_y x 1 ]
+    * bottom[1] - bbox-label [batch_size x grid_sz_x x grid_sz_y x 4 (xl, yt, xr, yb)]
+    * top [0] - list of groundtruth bbox
+        [ batch_size x max_bbox_per_image x 5 (xl, yt, xr, yb, 0)]
+
+    Example prototxt definition:
+
+    layer {
+        type: 'Python'
+        name: 'cluster_gt'
+        # gt_bbox_list is a batch_size x MAX_BOXES x 5 blob
+        top: 'gt_bbox_list'
+        bottom: 'coverage-label'
+        bottom: 'bbox-label'
+        python_param {
+            module: 'caffe.layers.detectnet.clustering'
+            layer: 'ClusterGroundtruth'
+            # parameters - img_size_x, img_size_y, stride,
+            param_str : '1248,352,16'
+        }
+        include: { phase: TEST }
+    }
+    """
+
+    def setup(self, bottom, top):
+        self.is_groundtruth = True
+        try:
+            plist = self.param_str.split(',')
+            self.image_size_x = int(plist[0])
+            self.image_size_y = int(plist[1])
+            self.stride = int(plist[2])
+        except ValueError:
+            raise ValueError("Parameter string missing or data type is wrong !")
+
+        pass
+
+    def reshape(self, bottom, top):
+        n_images= bottom[0].data.shape[0]
+        # Assuming that max booxes per image are MAX_BOXES
+        top[0].reshape(n_images,MAX_BOXES,5)
+
+    def forward(self, bottom, top):
+        #print "Forward pass: Clustering bboxes"
+        bbox = cluster(self,bottom[0].data,bottom[1].data)
+        top[0].data[...] = bbox
+
+    def backward(self, top, propagate_down, bottom):
+        pass
+
+class ClusterDetections(caffe.Layer):
+    """
+    * convert network output in grid format to list using group rectangles clustering.
+    * bottom[0] - predicted coverage [ batch_size x grid_sz_x x grid_sz_y x 1 ]
+    * bottom[1] - predicted bbox [batch_size x grid_sz_x x grid_sz_y x 4 (xl, yt, xr, yb)]
+    * top [0] - list of predicted bbox
+        [ batch_size x max_bbox_per_image x 5 (xl, yt, xr, yb, confidence) ]
+
+    Example prototxt definition:
+
+    layer {
+        type: 'Python'
+        name: 'cluster'
+        # det_bbox_list is a batch_size x MAX_BOXES x 5 blob
+        top: 'det_bbox_list'
+        bottom: 'coverage'
+        bottom: 'bbox/regressor'
+        python_param {
+            module: 'caffe.layers.detectnet.clustering'
+            layer: 'ClusterDetections'
+            # parameters - img_size_x, img_size_y, stride,
+            # gridbox_cvg_threshold,gridbox_rect_threshold,gridbox_rect_eps,min_height
+            param_str : '1248,352,16,0.05,1,0.025,22'
+        }
+        include: { phase: TEST }
+    }
+    """
+
+    def setup(self, bottom, top):
+        self.is_groundtruth = False
+        try:
+            plist = self.param_str.split(',')
+            self.image_size_x = int(plist[0])
+            self.image_size_y = int(plist[1])
+            self.stride = int(plist[2])
+            self.gridbox_cvg_threshold = float(plist[3])
+            self.gridbox_rect_thresh = int(plist[4])
+            self.gridbox_rect_eps = float(plist[5])
+            self.min_height = int(plist[6])
+        except ValueError:
+            raise ValueError("Parameter string missing or data type is wrong !")
+
+        pass
+
+    def reshape(self, bottom, top):
+        n_images= bottom[0].data.shape[0]
+        # Assuming that max booxes per image are MAX_BOXES
+        top[0].reshape(n_images,MAX_BOXES,5)
+
+    def forward(self, bottom, top):
+        #print "Forward pass: Clustering bboxes"
+        bbox = cluster(self,bottom[0].data,bottom[1].data)
+        top[0].data[...] = bbox
+
+    def backward(self, top, propagate_down, bottom):
+        pass
 def gridbox_to_boxes(net_cvg, net_boxes, self ):
 
     im_sz_x =  self.image_size_x
@@ -159,61 +211,3 @@ def cluster(self,net_cvg,net_boxes):
             boxes[i,0:r,0:c] = boxes_cur_image
 
     return boxes
-
-class ClusterGroundtruth(caffe.Layer):
-
-    def setup(self, bottom, top):
-        self.is_groundtruth = True
-        try:
-            plist = self.param_str.split(',')
-            self.image_size_x = int(plist[0])
-            self.image_size_y = int(plist[1])
-            self.stride = int(plist[2])
-        except ValueError:
-            raise ValueError("Parameter string missing or data type is wrong !")
-
-        pass
-
-    def reshape(self, bottom, top):
-        n_images= bottom[0].data.shape[0]
-        # Assuming that max booxes per image are MAX_BOXES
-        top[0].reshape(n_images,MAX_BOXES,5)
-
-    def forward(self, bottom, top):
-        #print "Forward pass: Clustering bboxes"
-        bbox = cluster(self,bottom[0].data,bottom[1].data)
-        top[0].data[...] = bbox
-
-    def backward(self, top, propagate_down, bottom):
-        pass
-
-class ClusterDetections(caffe.Layer):
-
-    def setup(self, bottom, top):
-        self.is_groundtruth = False
-        try:
-            plist = self.param_str.split(',')
-            self.image_size_x = int(plist[0])
-            self.image_size_y = int(plist[1])
-            self.stride = int(plist[2])
-            self.gridbox_cvg_threshold = float(plist[3])
-            self.gridbox_rect_thresh = int(plist[4])
-            self.gridbox_rect_eps = float(plist[5])
-            self.min_height = int(plist[6])
-        except ValueError:
-            raise ValueError("Parameter string missing or data type is wrong !")
-
-        pass
-
-    def reshape(self, bottom, top):
-        n_images= bottom[0].data.shape[0]
-        # Assuming that max booxes per image are MAX_BOXES
-        top[0].reshape(n_images,MAX_BOXES,5)
-
-    def forward(self, bottom, top):
-        #print "Forward pass: Clustering bboxes"
-        bbox = cluster(self,bottom[0].data,bottom[1].data)
-        top[0].data[...] = bbox
-
-    def backward(self, top, propagate_down, bottom):
-        pass
