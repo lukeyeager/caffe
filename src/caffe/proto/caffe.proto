@@ -504,7 +504,7 @@ message NVAugmentationParameter {
   // minimum and maximum scaling factor. 1.0 implies no scaling.
   optional float scale_min = 5 [default = 0.7];
   optional float scale_max = 6 [default = 1.0];
-  // probability that image will be flipped across the Y axis. 0 turns flip 
+  // probability that image will be flipped across the Y axis. 0 turns flip
   //  augmentation off.
   optional float flip_prob = 7 [default = 0.33];
   // maximum angle in degrees (in both directions) image may be rotated. 0 turns

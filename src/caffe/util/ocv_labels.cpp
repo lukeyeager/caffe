@@ -10,9 +10,9 @@ using std::string;
 namespace caffe {
 
 void setLabel(
-    Mat& im, 
-    const string& label, 
-    const Point& org, 
+    Mat& im,
+    const string& label,
+    const Point& org,
     const double scale
 ) {
   static const int fontface = FONT_HERSHEY_SIMPLEX;
@@ -21,19 +21,19 @@ void setLabel(
 
   Size text = getTextSize(label, fontface, scale, thickness, &baseline);
   rectangle(
-      im, 
-      org + Point(0, baseline), 
+      im,
+      org + Point(0, baseline),
       org + Point(text.width, -text.height),
-      CV_RGB(0, 0, 0), 
+      CV_RGB(0, 0, 0),
       CV_FILLED
   );
   putText(
-      im, 
-      label, 
-      org, 
-      fontface, 
-      scale, 
-      CV_RGB(255, 255, 255), 
+      im,
+      label,
+      org,
+      fontface,
+      scale,
+      CV_RGB(255, 255, 255),
       thickness,
       20
   );

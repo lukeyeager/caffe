@@ -41,10 +41,10 @@ CoverageGenerator<Dtype>::CoverageGenerator(
 ) : param_(param),
     imageROI_(0, 0, (Dtype) param.image_size_x(), (Dtype) param.image_size_y()),
     gridROI_(
-      imageROI_.tl()   * (Dtype)(1.0 / param.stride()), 
+      imageROI_.tl()   * (Dtype)(1.0 / param.stride()),
       imageROI_.size() * (Dtype)(1.0 / param.stride())
     ),
-    //minimum coverage is 0 if partial coverage is enabled, else clamp all 
+    //minimum coverage is 0 if partial coverage is enabled, else clamp all
     // coverage values from 1..1
     minCoverage_(1.0),
     gridBoxArea_(this->param_.stride() * this->param_.stride()),
@@ -61,9 +61,9 @@ CoverageGenerator<Dtype>* CoverageGenerator<Dtype>::create(
 ) {
   switch(param.coverage_type()) {
     default:
-      LOG(WARNING) 
-          << "Unknown coverage type specified \"" 
-          << param.coverage_type() 
+      LOG(WARNING)
+          << "Unknown coverage type specified \""
+          << param.coverage_type()
           << "\", defaulting to rectangular";
     case NVGroundTruthParameter_CoverageType_RECTANGULAR:
       return new RectangularCoverageGenerator<Dtype>(param);
@@ -84,13 +84,13 @@ size_t CoverageGenerator<Dtype>::findNumLabels(
 
 
 template<typename Dtype>
-typename CoverageGenerator<Dtype>::LabelMap 
+typename CoverageGenerator<Dtype>::LabelMap
 CoverageGenerator<Dtype>::assignLabels(
     const NVGroundTruthParameter& g_param_
 ) const {
   LabelMap result;
   for (size_t iClass = 0; iClass != g_param_.object_class_size(); ++iClass) {
-    const NVGroundTruthParameter_ClassMapping& mapping = 
+    const NVGroundTruthParameter_ClassMapping& mapping =
         g_param_.object_class(iClass);
     result[mapping.src()] = mapping.dst();
   }
@@ -105,12 +105,12 @@ CoverageGenerator<Dtype>::assignLabels(
 
 
 template<typename Dtype>
-vector<typename CoverageGenerator<Dtype>::BboxLabel> 
+vector<typename CoverageGenerator<Dtype>::BboxLabel>
 CoverageGenerator<Dtype>::pruneBboxes(
     const vector<BboxLabel>& bboxList
 ) const {
   vector<BboxLabel> result; result.reserve(bboxList.size());
-  
+
   foreach_(BboxLabel cLabel, bboxList) {
     // crop bounding boxes to the dimensions of the screen:
     if (this->param_.crop_bboxes()) {
@@ -119,42 +119,42 @@ CoverageGenerator<Dtype>::pruneBboxes(
       Rectv croppedBbox = cLabel.bbox & this->imageROI_;
       // truncation is the area of the intersection over the whole:
       Dtype truncation = 1.0 - std::max(cLabel.truncated, (Dtype)0.0);
-      truncation *= 
-          croppedBbox.area() / 
+      truncation *=
+          croppedBbox.area() /
           std::max(cLabel.bbox.area(), (Dtype)FLT_EPSILON);
       // reset cLabel
       cLabel.truncated = std::max(0.0, std::min(1.0, 1.0 - truncation));
       cLabel.bbox = croppedBbox;
     }
-    
+
     // exclude all labels which are not of the classes we care about:
     if (labels_.count(size_t(cLabel.classNumber)) == 0) { continue; }
-    
+
     // exclude bounding boxes which don't exist in the scene at all:
     if (cLabel.bbox.area() < FLT_EPSILON) { continue; }
-    
+
     // exclude bounding boxes with a height less than some number of pixels:
     if (cLabel.bbox.height < param_.height_threshold()) { continue; }
-    
+
     // exclude bounding boxes with too high a truncation value:
     if (cLabel.truncated > param_.truncate_threshold()) { continue; }
-    
+
     // exclude bounding boxes with too high an occlusion value:
     if (cLabel.occlusion > param_.occlusion_threshold()) { continue; }
-    
+
     // exclude bounding boxes too far away from the camera:
     if (std::abs(cLabel.location.z) > param_.depth_threshold()) { continue; }
-    
+
     result.push_back(cLabel);
   }
-  
+
   return result;
 }
 
 
 template<typename Dtype>
 Scalar CoverageGenerator<Dtype>::bboxToColor(
-    const Point2i& tl, 
+    const Point2i& tl,
     const Point2i& br
 ) const {
   //TODO: is there an array of these colors elsewhere?
@@ -170,9 +170,9 @@ Scalar CoverageGenerator<Dtype>::bboxToColor(
     Scalar(127, 127, 255),  Scalar(127, 255, 127),
     Scalar(255, 127, 127),  Scalar(255, 255, 255)
   }};
-  
+
   size_t iColor = ((((tl.x) * 1000 + tl.y)*1000 + br.x)*1000 + br.y);
-  
+
   return colors[iColor % colors.size()];
 }
 
@@ -188,12 +188,12 @@ void CoverageGenerator<Dtype>::clearLabel(Dtype* transformedLabels) const {
 
 
 template <typename Dtype>
-typename CoverageGenerator<Dtype>::Rectv 
+typename CoverageGenerator<Dtype>::Rectv
 CoverageGenerator<Dtype>::coverageBoundingBox(const Rectv& boundingBox) const {
   //find the center of the bbox as the midpoint between its top-left and
   // bottom-right points:
   Point2v center = (boundingBox.tl() + boundingBox.br()) * 0.5;
-  
+
   // shrink coverage region by a percentage of the bounding box's size:
   Size2v shrunkSize = boundingBox.size() * (Dtype)this->param_.scale_cvg();
 
@@ -204,11 +204,11 @@ CoverageGenerator<Dtype>::coverageBoundingBox(const Rectv& boundingBox) const {
     {
       Dtype min_cvg_len = this->param_.min_cvg_len();
       shrunkSize.width = min(
-          boundingBox.width, 
+          boundingBox.width,
           max(min_cvg_len, shrunkSize.width)
       );
       shrunkSize.height = min(
-          boundingBox.height, 
+          boundingBox.height,
           max(min_cvg_len, shrunkSize.height)
       );
       break;
@@ -223,8 +223,8 @@ CoverageGenerator<Dtype>::coverageBoundingBox(const Rectv& boundingBox) const {
       break;
     }
   }
-  
-  //create a coverage region which defines the above shrunken size, centered 
+
+  //create a coverage region which defines the above shrunken size, centered
   // at the center of the bounding box:
   Rectv coverage(
       (center + Point2v(shrunkSize * (Dtype)0.5)),
@@ -237,16 +237,16 @@ CoverageGenerator<Dtype>::coverageBoundingBox(const Rectv& boundingBox) const {
 template<typename Dtype>
 Rect CoverageGenerator<Dtype>::imageRectToGridRect(const Rectv& area) const {
   float stride = param_.stride();
-  
+
   //define a truncated rectangle which encompasses all gridspaces covered by
   // this bounding box:
   Point tl(floor(area.tl().x / stride), floor(area.tl().y / stride));
   Point br( ceil(area.br().x / stride),  ceil(area.br().y / stride));
   Rect g_area(tl, br);
-  
+
   //bound truncated rectangle by size of the gridbox area:
   g_area &= gridROI_;
-  
+
   return g_area;
 }
 
@@ -255,9 +255,9 @@ BOOST_STATIC_ASSERT(CoverageGenerator<float>::TRANSFORMED_LABEL_SIZE == 8);
 
 template<typename Dtype>
 TransformedLabel_<Dtype>::TransformedLabel_(
-    const CoverageGenerator<Dtype>& cgen, 
-    Dtype* transformedLabels, 
-    size_t g_x, 
+    const CoverageGenerator<Dtype>& cgen,
+    Dtype* transformedLabels,
+    size_t g_x,
     size_t g_y
 ):  //foreground:
     foreground(   TRANSFORMED_LABEL_AT(&cgen, g_x, g_y, 0)),
@@ -274,20 +274,20 @@ TransformedLabel_<Dtype>::TransformedLabel_(
     obj_norm(     TRANSFORMED_LABEL_AT(&cgen, g_x, g_y, 7)),
     coverages()
 {
-  size_t coverageDimensions = 
+  size_t coverageDimensions =
       cgen.label_size_ - CoverageGenerator<Dtype>::TRANSFORMED_LABEL_SIZE;
   coverages.reserve(coverageDimensions);
-  for(size_t iCoverage = 0; 
+  for(size_t iCoverage = 0;
       iCoverage != coverageDimensions;
       ++iCoverage
   ) {
     Dtype& coverage = TRANSFORMED_LABEL_AT(
-        &cgen, 
-        g_x, 
-        g_y, 
+        &cgen,
+        g_x,
+        g_y,
         CoverageGenerator<Dtype>::TRANSFORMED_LABEL_SIZE + iCoverage
     );
-    
+
     coverages.push_back(ref(coverage));
   }
 }
@@ -295,8 +295,8 @@ TransformedLabel_<Dtype>::TransformedLabel_(
 
 template <typename Dtype>
 TransformedLabel_<Dtype> CoverageGenerator<Dtype>::transformedLabelAt(
-    Dtype* transformedLabels, 
-    size_t g_x, 
+    Dtype* transformedLabels,
+    size_t g_x,
     size_t g_y
 ) const {
   return TransformedLabel_<Dtype>(*this, transformedLabels, g_x, g_y);
@@ -313,38 +313,38 @@ Dtype CoverageGenerator<Dtype>::objectNormValue(
 
 template<typename Dtype>
 void CoverageGenerator<Dtype>::visualize(
-    const Dtype* transformedLabels, 
+    const Dtype* transformedLabels,
     Mat3b& img
 ) const {
   float stride = this->param_.stride();
-  
+
   // same col width as image
   Mat3b img_vis(img, this->imageROI_);
   for (size_t g_y = 0; g_y < this->gridROI_.size().height; g_y++) {
     for (size_t g_x = 0; g_x < this->gridROI_.size().width; g_x++) {
       const TransformedLabel transformedLabel(this->transformedLabelAt(
           const_cast<Dtype*>(transformedLabels), // TODO: a const version
-          g_x, 
+          g_x,
           g_y
       ));
-      
+
       // maximum coverage value:
       coverage_iterator iMax_cov = std::max_element(
-          transformedLabel.coverages.begin(), 
+          transformedLabel.coverages.begin(),
           transformedLabel.coverages.end()
       );
-      ptrdiff_t max_coverage_index = 
+      ptrdiff_t max_coverage_index =
           iMax_cov - transformedLabel.coverages.begin();
       Dtype max_coverage = *iMax_cov;
-      
-      //do not draw a coverage dot or bounding box if not in a coverage 
+
+      //do not draw a coverage dot or bounding box if not in a coverage
       // region:
-      if (max_coverage <= FLT_EPSILON) { 
+      if (max_coverage <= FLT_EPSILON) {
         continue;
       }
-      
+
       Rectv gridbox(g_x * stride, g_y * stride, stride, stride);
-      
+
       Point2v tl(
           transformedLabel.topLeft_x + gridbox.tl().x,
           transformedLabel.topLeft_y + gridbox.tl().y
@@ -353,10 +353,10 @@ void CoverageGenerator<Dtype>::visualize(
           transformedLabel.bottomRight_x + gridbox.tl().x,
           transformedLabel.bottomRight_y + gridbox.tl().y
       );
-      
+
       Scalar color;
       if (!this->param_.visualize_obj_norm()) {
-        //define color of bounding box as a function of its bounding box and 
+        //define color of bounding box as a function of its bounding box and
         color = this->bboxToColor(tl, br);
         // coverage intensity:
         color *= max_coverage;
@@ -366,11 +366,11 @@ void CoverageGenerator<Dtype>::visualize(
         color = Scalar(0, 0, 255*5);
         color *= transformedLabel.obj_norm;
       }
-      
+
       Point2v center(
           (gridbox.tl() + gridbox.br()) * 0.5
       );
-      
+
 
       // draw coverage dot and bounding box:
       circle(img_vis, center, 2, color, -1); //-1 means filled
@@ -391,63 +391,63 @@ void CoverageGenerator<Dtype>::generate(
 ) const {
   // ignore all label types we don't care about:
   const vector<BboxLabel> bboxList(this->pruneBboxes(_bboxList));
-  
+
   //clear out transformed_label, things may remain inside from the last batch
   this->clearLabel(transformedLabels);
-  
+
   //foreach bbox in list:
-  foreach_(const BboxLabel& label, bboxList) { 
+  foreach_(const BboxLabel& label, bboxList) {
     Rectv bbox(label.bbox);
-    
+
     //Define the area in which we intend to mark as containing an object to
     // the network:
     Rectv coverage(this->coverageBoundingBox(bbox));
-    
-    // coverage region is implementation specific and defined by extending 
+
+    // coverage region is implementation specific and defined by extending
     //  classes, but must fit within coverage Rectf:
     scoped_ptr<CoverageRegion> coverageRegion(
         this->coverageRegion(coverage)
     );
     Dtype dObjNormValue = objectNormValue(*coverageRegion);
-    
+
     // This Rect includes all gridspaces which overlap the coverage rectangle:
     Rect g_coverage(this->imageRectToGridRect(coverage));
-    
+
     for (size_t g_y = g_coverage.tl().y; g_y < g_coverage.br().y; g_y++) {
       for (size_t g_x = g_coverage.tl().x; g_x < g_coverage.br().x; g_x++) {
         // the current gridbox:
         Rectv gridBox(
-          Point2v(g_x, g_y) * (float) this->param_.stride(), 
+          Point2v(g_x, g_y) * (float) this->param_.stride(),
           Size2v(this->param_.stride(), this->param_.stride())
         );
-        
+
         // the amount of the gridbox covered by the coverage region:
-        Dtype cvgArea = 
-            coverageRegion->intersectionArea(gridBox) 
+        Dtype cvgArea =
+            coverageRegion->intersectionArea(gridBox)
           / this->gridBoxArea_;
-        
+
         TransformedLabel tLabel(this->transformedLabelAt(
-            transformedLabels, 
-            g_x, 
+            transformedLabels,
+            g_x,
             g_y
         ));
-        
+
         // maximum coverage value:
         /*Dtype max_coverage = *std::max_element(
-            tLabel.coverages.begin(), 
+            tLabel.coverages.begin(),
             tLabel.coverages.end()
         );*/
-        
+
         if (cvgArea > FLT_EPSILON)
          {
-          
+
 	  zeroCoverage(tLabel.coverages);
-	  Dtype& tLabel_coverages = 
+	  Dtype& tLabel_coverages =
               tLabel.coverages[labels_.at(size_t(label.classNumber))];
           //coverage (clamped from 0..1)
-          tLabel_coverages = 1.0 ; 
-              
-          
+          tLabel_coverages = 1.0 ;
+
+
           //bbox
           tLabel.topLeft_x     = bbox.tl().x - gridBox.tl().x;
           tLabel.topLeft_y     = bbox.tl().y - gridBox.tl().y;
@@ -456,10 +456,10 @@ void CoverageGenerator<Dtype>::generate(
           //bbox dimensions
           tLabel.dimension_w = 1.0 / bbox.width;
           tLabel.dimension_h = 1.0 / bbox.height;
-          
+
           //obj_norm
           tLabel.obj_norm = std::max(this->minObjNorm_, dObjNormValue);
-          
+
           //foreground:
           tLabel.foreground = 1.0;
         }

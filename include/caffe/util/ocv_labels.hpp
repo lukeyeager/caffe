@@ -11,9 +11,9 @@ using namespace cv;
 using std::string;
 
 void setLabel(
-    Mat& im, 
-    const string& label, 
-    const Point& org, 
+    Mat& im,
+    const string& label,
+    const Point& org,
     const double scale=1.0
 );
 

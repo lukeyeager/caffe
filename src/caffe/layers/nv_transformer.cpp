@@ -65,9 +65,9 @@ void NVTransformationLayer<Dtype>::LayerSetUp(
   if (t_param_.has_mean_file()) {
     size_t image_x = bottom[0]->width();
     size_t image_y = bottom[0]->height();
-    
+
     retrieveMeanImage(Size(image_x, image_y));
-    
+
   } else if (t_param_.mean_value_size() != 0) {
     retrieveMeanChannels();
   }
@@ -77,15 +77,15 @@ void NVTransformationLayer<Dtype>::LayerSetUp(
 template<typename Dtype>
 void NVTransformationLayer<Dtype>::retrieveMeanImage(Size dimensions) {
   CHECK(t_param_.has_mean_file());
-  
+
   const string& mean_file = t_param_.mean_file();
-  BlobProto blob_proto; 
+  BlobProto blob_proto;
   Blob<Dtype> data_mean;
-  
+
   ReadProtoFromBinaryFileOrDie(mean_file, &blob_proto);
   data_mean.FromProto(blob_proto);
   data_mean_ = blobToMats(data_mean).at(0);
-  
+
   // resize, if dimensions were defined:
   if (dimensions.area() > 0) {
     resize(data_mean_, data_mean_, dimensions, cv::INTER_CUBIC);
@@ -103,7 +103,7 @@ void NVTransformationLayer<Dtype>::retrieveMeanChannels() {
       break;
     case 3:
       for (size_t iChannel = 0; iChannel != 3; ++iChannel) {
-        mean_values_[iChannel] = 
+        mean_values_[iChannel] =
             t_param_.mean_value(iChannel) / Dtype(UINT8_MAX);
       }
       break;
@@ -116,7 +116,7 @@ void NVTransformationLayer<Dtype>::retrieveMeanChannels() {
 
 template<typename Dtype>
 void NVTransformationLayer<Dtype>::Reshape(
-    const vector<Blob<Dtype>*>& bottom, 
+    const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top
 ) {
   // accept only three channel images:
@@ -148,52 +148,52 @@ void NVTransformationLayer<Dtype>::Reshape(
 
 
 template<typename Dtype>
-typename NVTransformationLayer<Dtype>::Mat3v 
+typename NVTransformationLayer<Dtype>::Mat3v
 NVTransformationLayer<Dtype>::dataToMat(
-    const Dtype* _data, 
+    const Dtype* _data,
     Size dimensions
 ) const {
   // CODE FROM https://github.com/BVLC/caffe/blob/master/examples/cpp_classification/classification.cpp commit f3a933a
   // The format of the mean file is planar 32-bit float BGR or grayscale.
   vector<Mat> channels; channels.reserve(3);
-  
-  
+
+
   Dtype* data = const_cast<Dtype*>(_data);
   for (size_t iChannel = 0; iChannel != 3; ++iChannel) {
-    //Extract an individual channel. This does not perform a datacopy, so it 
+    //Extract an individual channel. This does not perform a datacopy, so it
     // should be fine to do inline.
     Mat channel(dimensions, cv::DataType<Dtype>::type, data);
     channels.push_back(channel);
     data += dimensions.area();
   }
 
-  //Merge the separate channels into a single image. 
+  //Merge the separate channels into a single image.
   Mat3v result;
   merge(channels, result);
-  
+
   return result;
 }
 
 
 template<typename Dtype>
-vector<typename NVTransformationLayer<Dtype>::Mat3v> 
+vector<typename NVTransformationLayer<Dtype>::Mat3v>
 NVTransformationLayer<Dtype>::blobToMats(
     const Blob<Dtype>& images
 ) const {
   CHECK_EQ(images.channels(), 3);
   vector<Mat3v> result; result.reserve(images.num());
-  
+
   for (size_t iImage = 0; iImage != images.num(); ++iImage) {
    const Dtype* image_data = &images.cpu_data()[
         images.offset(iImage, 0, 0, 0)
     ];
-    
+
     result.push_back(dataToMat(
         image_data,
         Size(images.width(), images.height())
     ));
   }
-  
+
   return result;
 }
 
@@ -204,12 +204,12 @@ NVTransformationLayer<Dtype>::blobToLabels(
     const Blob<Dtype>& labels
 ) const {
   vector<vector<BboxLabel > > result; result.reserve(labels.num());
-  
+
   for (size_t iLabel = 0; iLabel != labels.num(); ++iLabel) {
     const Dtype* source = &labels.cpu_data()[
         labels.offset(iLabel, 0, 0, 0)
     ];
-    
+
     size_t numOfBbox = static_cast<size_t>(source[0]);
     size_t bboxLen = static_cast<size_t>(source[1]);
     CHECK_EQ(bboxLen, sizeof(BboxLabel) / sizeof(Dtype));
@@ -218,11 +218,11 @@ NVTransformationLayer<Dtype>::blobToLabels(
     source += bboxLen;
     // convert label into typed struct:
     result.push_back(vector<BboxLabel>(
-        reinterpret_cast<const BboxLabel*>(source), 
+        reinterpret_cast<const BboxLabel*>(source),
         reinterpret_cast<const BboxLabel*>(source + bboxLen * numOfBbox)
     ));
   }
-  
+
   return result;
 }
 
@@ -233,23 +233,23 @@ struct toDtype : public std::unary_function<float, Dtype> {
 };
 template<typename Dtype>
 void NVTransformationLayer<Dtype>::matToBlob(
-    const Mat3v& source, 
+    const Mat3v& source,
     Dtype* destination
 ) const {
-  std::vector<Mat1v> channels; 
+  std::vector<Mat1v> channels;
   split(source, channels);
-  
+
   size_t offset = 0;
   for (size_t iChannel = 0; iChannel != channels.size(); ++iChannel) {
     const Mat1v& channel = channels[iChannel];
-    
+
     std::transform(
         channel.begin(),
         channel.end(),
         &destination[offset],
         toDtype<Dtype>()
     );
-    
+
     offset += channel.total();
   }
 }
@@ -257,7 +257,7 @@ void NVTransformationLayer<Dtype>::matToBlob(
 
 template<typename Dtype>
 void NVTransformationLayer<Dtype>::matsToBlob(
-    const vector<Mat3v>& _source, 
+    const vector<Mat3v>& _source,
     Blob<Dtype>& _dest
 ) const {
   for (size_t iImage = 0; iImage != _source.size(); ++iImage) {
@@ -307,7 +307,7 @@ Dtype NVTransformationLayer<Dtype>::randDouble() {
   rng_t* rng =
       static_cast<rng_t*>(rng_->generator());
   uint64_t randval = (*rng)();
-  
+
   return (Dtype(randval) / Dtype(rng_t::max()));
 }
 
@@ -325,19 +325,19 @@ void NVTransformationLayer<Dtype>::Forward_cpu(
 
   const vector<Mat3v> inputImages = blobToMats(*bottom[0]);
   const vector<vector<BboxLabel > > labels = blobToLabels(*bottom[1]);
-  
+
   vector<Mat3v> outputImages(inputImages.size());
   Blob<Dtype>& outputLabels = *top[1];
-  
+
   for (size_t iImage = 0; iImage != inputImages.size(); ++iImage) {
     const Mat3v& inputImage = inputImages[iImage];
     const vector<BboxLabel >& inputLabel = labels[iImage];
-    
+
     Mat3v& outputImage = outputImages[iImage];
     Dtype* outputLabel = &outputLabels.mutable_cpu_data()[
         outputLabels.offset(iImage, 0, 0, 0)
     ];
-    
+
     transform(inputImage, inputLabel, outputImage, outputLabel);
   }
   // emplace images in output image blob:
@@ -369,12 +369,12 @@ void NVTransformationLayer<Dtype>::transform(
     // operation
     as.hue_rotation = augmentation_hueRotation(img_temp, img_temp);
     as.saturation = augmentation_desaturation(img_temp, img_temp);
-    // mean subtraction must occur after color augmentations as colorshift 
+    // mean subtraction must occur after color augmentations as colorshift
     // outside of 0..1 invalidates scale
     meanSubtract(img_temp);
     // images now bounded from -0.5...0.5
     as.scale = augmentation_scale(img_temp, img_aug, bboxlist, bboxlist_aug);
-    as.degree = 
+    as.degree =
         augmentation_rotate(img_aug, img_temp, bboxlist_aug, bboxlist_aug);
     as.flip = augmentation_flip(img_temp, img_aug, bboxlist_aug, bboxlist_aug);
     as.crop = augmentation_crop(img_aug, img_temp, bboxlist_aug, bboxlist_aug);
@@ -383,23 +383,23 @@ void NVTransformationLayer<Dtype>::transform(
   else {
     // perform mean subtraction:
     meanSubtract(img_temp);
-    
+
     // deterministically scale the image and ground-truth, if requested:
     transform_scale(
-        img_temp, 
-        img_aug, 
-        bboxlist, 
-        bboxlist_aug, 
+        img_temp,
+        img_aug,
+        bboxlist,
+        bboxlist_aug,
         Size(image_x, image_y)
     );
   }
-  
+
   CHECK_EQ(img_aug.cols, image_x);
   CHECK_EQ(img_aug.rows, image_y);
 
   // generate transformed_label based on bboxlist_aug
   coverage_->generate(transformed_label, bboxlist_aug);
-  
+
   // visualize it: both before and after augmentation
   if (g_param_.visualize()) {
     visualize_bboxlist(
@@ -411,7 +411,7 @@ void NVTransformationLayer<Dtype>::transform(
         as
     );
   }
-  
+
   // networks expect floats bounded from -255..255, so rescale to this range:
   img_aug *= Dtype(UINT8_MAX);
 }
@@ -426,9 +426,9 @@ float NVTransformationLayer<Dtype>::augmentation_scale(
 ) {
   bool doScale = randDouble() <= a_param_.scale_prob();
   //linear shear into [scale_min, scale_max]
-  float scale = 
-      a_param_.scale_min() + 
-      (a_param_.scale_max() - a_param_.scale_min()) * 
+  float scale =
+      a_param_.scale_min() +
+      (a_param_.scale_max() - a_param_.scale_min()) *
       randDouble();
 
   if (doScale) {
@@ -436,7 +436,7 @@ float NVTransformationLayer<Dtype>::augmentation_scale(
     Size scaleSize(round(img_src.cols * scale), round(img_src.rows * scale));
     transform_scale(
         img_src,
-        img_dst, 
+        img_dst,
         bboxList,
         bboxList_aug,
         scaleSize
@@ -446,26 +446,26 @@ float NVTransformationLayer<Dtype>::augmentation_scale(
     bboxList_aug = bboxList;
     scale = 1;
   }
-  
+
   return scale;
 }
 
 
 template<typename Dtype>
 void NVTransformationLayer<Dtype>::transform_scale(
-    const Mat3v& img, 
-    Mat3v& img_temp, 
-    const vector<BboxLabel >& bboxList, 
-    vector<BboxLabel >& _bboxList_aug, 
+    const Mat3v& img,
+    Mat3v& img_temp,
+    const vector<BboxLabel >& bboxList,
+    vector<BboxLabel >& _bboxList_aug,
     const Size& size
 ) {
   // perform scaling if desired size and image size are non-equal:
   if (size.height != img.rows || size.width != img.cols) {
     float scale_x = (double)size.width / img.cols;
     float scale_y = (double)size.height / img.rows;
-    
+
     resize(img, img_temp, size, cv::INTER_CUBIC);
-    
+
     vector<BboxLabel > bboxList_aug;
     foreach_(BboxLabel label, bboxList) { //for every bbox:
       // resize by scale
@@ -479,7 +479,7 @@ void NVTransformationLayer<Dtype>::transform_scale(
     }
 
     _bboxList_aug.swap(bboxList_aug);
-    
+
   } else {
     img_temp = img.clone();
     _bboxList_aug = bboxList;
@@ -518,7 +518,7 @@ Point NVTransformationLayer<Dtype>::augmentation_crop(
   }
   inner = Point2i(std::max(0,  1 * offset.x), std::max(0,  1 * offset.y));
   outer = Point2i(std::max(0, -1 * offset.x), std::max(0, -1 * offset.y));
-  
+
   // crop / grow to size:
   transform_crop(
       img_src,
@@ -535,12 +535,12 @@ Point NVTransformationLayer<Dtype>::augmentation_crop(
 
 template<typename Dtype>
 void NVTransformationLayer<Dtype>::transform_crop(
-    const Mat3v& img_src, 
-    Mat3v& img_dst, 
-    const vector<BboxLabel>& bboxlist, 
-    vector<BboxLabel>& _bboxlist_aug, 
+    const Mat3v& img_src,
+    Mat3v& img_dst,
+    const vector<BboxLabel>& bboxlist,
+    vector<BboxLabel>& _bboxlist_aug,
     Rect inner,
-    Size2i dst_size, 
+    Size2i dst_size,
     Point2i outer
 ) const {
   // ensure src_rect fits within img_src:
@@ -552,7 +552,7 @@ void NVTransformationLayer<Dtype>::transform_crop(
   // assert src_rect and dst_rect have the same size:
   src_rect = Rect(src_rect.tl(), dst_rect.size());
   // Fail with an Opencv exception if any of these are negative
-  
+
   // no operation is needed in the case of zero transformations:
   if (src_rect == dst_rect
    && src_rect.tl() == Point2i(0, 0)
@@ -567,14 +567,14 @@ void NVTransformationLayer<Dtype>::transform_crop(
     img_dst = Mat3v(dst_size);
     // and fill with black:
     img_dst.setTo(Scalar(-0.5, -0.5, -0.5));
-    
+
     // define destinationROI inside of destination mat:
     Mat3v destinationROI = img_dst(dst_rect);
     // sourceROI inside of source mat:
     Mat3v sourceROI = img_src(src_rect);
     // copy sourceROI into destinationROI:
     sourceROI.copyTo(destinationROI);
-    
+
     // translate all bounding boxes by the new offset, -inner + outer:
     Point2v bboxOffset = dst_rect.tl() - src_rect.tl();
     vector<BboxLabel> bboxlist_aug;
@@ -603,13 +603,13 @@ bool NVTransformationLayer<Dtype>::augmentation_flip(
   if (doflip) {
     flip(img_src, img_aug, 1);
     float w = img_src.cols;
-    
+
     vector <BboxLabel > bboxlist_aug;
     foreach_(BboxLabel label, bboxlist) { //for every bbox
       // flip X across the width of the image:
       label.bbox.x = w - label.bbox.x - 1.0f - label.bbox.width;
       // Y, width, height stay the same
-      
+
       bboxlist_aug.push_back(label);
     }
     _bboxlist_aug.swap(bboxlist_aug);
@@ -623,16 +623,16 @@ bool NVTransformationLayer<Dtype>::augmentation_flip(
 
 
 template<typename Dtype>
-typename NVTransformationLayer<Dtype>::Mat1v 
+typename NVTransformationLayer<Dtype>::Mat1v
 NVTransformationLayer<Dtype>::getTransformationMatrix(
-    Rect region, 
+    Rect region,
     Dtype rotation
 ) const {
   Size2v size(region.width, region.height);
   Point2v center = size * (Dtype)0.5;
   array<Point2f, 4> srcTri, dstTri;
-  
-  // Define a rotated rectangle for our initial position, retrieving points 
+
+  // Define a rotated rectangle for our initial position, retrieving points
   //  for each of our 4 corners:
   RotatedRect initialRect(center, size, 0.0);
   initialRect.points(srcTri.c_array());
@@ -645,7 +645,7 @@ NVTransformationLayer<Dtype>::getTransformationMatrix(
   rotatedRect = RotatedRect(center - boundingRect.tl(), size, rotation);
   // retrieve points for each of the rotated rectangle's 4 corners:
   rotatedRect.points(dstTri.c_array());
-  
+
   // compute the affine transformation of this operation:
   Mat1v result(2, 3);
   result = getAffineTransform(srcTri.c_array(), dstTri.c_array());
@@ -656,7 +656,7 @@ NVTransformationLayer<Dtype>::getTransformationMatrix(
 
 template<typename Dtype>
 Rect NVTransformationLayer<Dtype>::getBoundingRect(
-    Rect region, 
+    Rect region,
     Dtype rotation
 ) const {
   Size2v size(region.width, region.height);
@@ -675,23 +675,23 @@ float NVTransformationLayer<Dtype>::augmentation_rotate(
 ) {
   bool doRotate = randDouble() <= a_param_.rotation_prob();
   float degree = (randDouble() - 0.5) * 2 * a_param_.max_rotate_degree();
-  
+
   if (doRotate && std::abs(degree) > FLT_EPSILON) {
     Rect roi(0, 0, img_src.cols, img_src.rows);
     // determine new bounding rect:
     Size2i boundingSize = getBoundingRect(roi, degree).size();
     // determine rotation matrix:
     Mat1v transformationMatrix = getTransformationMatrix(roi, degree);
-    
+
     // construct a destination matrix large enough to contain the rotated image:
     img_aug = Mat3v(boundingSize);
     // and fill with black:
     img_aug.setTo(Scalar(-0.5, -0.5, -0.5));
     // warp old image into new buffer, maintaining the background:
     warpAffine(
-        img_src, 
-        img_aug, 
-        transformationMatrix, 
+        img_src,
+        img_aug,
+        transformationMatrix,
         boundingSize,
         INTER_LINEAR,
         BORDER_TRANSPARENT
@@ -699,7 +699,7 @@ float NVTransformationLayer<Dtype>::augmentation_rotate(
 
     vector<BboxLabel > bboxlist_aug;
     foreach_(BboxLabel label, bboxList) { // for each bbox:
-      Mat1v center(3, 1); 
+      Mat1v center(3, 1);
       // center of bbox as midpoint between topLeft and bottomRight:
       Point2v center_point = (label.bbox.tl() + label.bbox.br()) * 0.5;
       center.template at<Dtype>(0, 0) = center_point.x;
@@ -712,7 +712,7 @@ float NVTransformationLayer<Dtype>::augmentation_rotate(
 
       // rotated bbox with topleft as midpoint - size/2 and prior size
       Point2v new_center_point(
-          new_center.template at<Dtype>(0,0), 
+          new_center.template at<Dtype>(0,0),
           new_center.template at<Dtype>(1,0)
       );
       Rectv rotated(
@@ -721,7 +721,7 @@ float NVTransformationLayer<Dtype>::augmentation_rotate(
       );
       label.bbox = rotated;
 
-      // Add to list of bboxes. Note that it's possible for the bounding box 
+      // Add to list of bboxes. Note that it's possible for the bounding box
       // to be out of the display area at this point
       bboxlist_aug.push_back(label);
     }
@@ -731,7 +731,7 @@ float NVTransformationLayer<Dtype>::augmentation_rotate(
     _bboxlist_aug = bboxList;
     degree = 0.0f;
   }
-  
+
   return degree;
 }
 
@@ -743,31 +743,31 @@ float NVTransformationLayer<Dtype>::augmentation_hueRotation(
 ) {
   bool doHueRotate = randDouble() <= a_param_.hue_rotation_prob();
   // rotate hue by this amount in degrees
-  float rotation = 
+  float rotation =
       (
           randDouble()                    // range: 0..1
         * (2.0 * a_param_.hue_rotation()) // range: 0..2*rot
       ) - a_param_.hue_rotation();        // range: -rot..rot
   // clamp to -180d..180d
   rotation = std::max(std::min(rotation, 180.0f), -180.0f);
-  
+
   // if we're actually rotating:
   if (doHueRotate && std::abs(rotation) > FLT_EPSILON) {
     // convert to HSV colorspace
     cvtColor(img, result, COLOR_BGR2HSV);
-    
+
     // retrieve the hue channel:
     static const array<int, 2> from_mix = {{0,0}};
     Mat1v hueChannel(result.rows, result.cols);
     mixChannels(
         &result, 1,
-        &hueChannel, 1, 
+        &hueChannel, 1,
         from_mix.data(), from_mix.size()/2
     );
-    
+
     // shift the hue's value by some amount:
     hueChannel += rotation;
-    
+
     // place hue-rotated channel back in result matrix:
     static const array<int, 6> to_mix = {{3,0, 1,1, 2,2}};
     const array<Mat, 2> to_channels = {{result, hueChannel}};
@@ -776,14 +776,14 @@ float NVTransformationLayer<Dtype>::augmentation_hueRotation(
         &result, 1,
         to_mix.data(), to_mix.size()/2
     );
-    
+
     // back to BGR colorspace
     cvtColor(result, result, COLOR_HSV2BGR);
   } else {
     result = img;
     rotation = 0.0f;
   }
-  
+
   return rotation;
 }
 
@@ -795,27 +795,27 @@ float NVTransformationLayer<Dtype>::augmentation_desaturation(
 ) {
   bool doDesaturate = randDouble() <= a_param_.desaturation_prob();
   // scale saturation by this amount:
-  float saturation = 
+  float saturation =
       1.0                          // inverse
     - randDouble()                 // range: 0..1
     * a_param_.desaturation_max(); // range: 0..max
-  
+
   // if our random value is large enough to produce noticeable desaturation:
   if (doDesaturate && (saturation < 1.0 - 1.0/UINT8_MAX)) {
     // convert to HSV colorspace
     cvtColor(img, result, COLOR_BGR2HSV);
-    
+
     // retrieve the saturation channel:
     static const array<int, 2> from_mix = {{1,0}};
     Mat1v saturationChannel(result.rows, result.cols);
     mixChannels(
         &result, 1,
-        &saturationChannel, 1, 
+        &saturationChannel, 1,
         from_mix.data(), from_mix.size()/2
     );
     // de-saturate the channel by an amount:
     saturationChannel *= saturation;
-    
+
     // place de-saturated channel back in result matrix:
     static const array<int, 6> to_mix = {{0,0, 3,1, 2,2}};
     const array<Mat, 2> to_channels = {{result, saturationChannel}};
@@ -824,21 +824,21 @@ float NVTransformationLayer<Dtype>::augmentation_desaturation(
         &result, 1,
         to_mix.data(), to_mix.size()/2
     );
-    
+
     // convert back to BGR colorspace:
     cvtColor(result, result, COLOR_HSV2BGR);
   } else {
     result = img;
     saturation = 1.0;
   }
-  
+
   return saturation;
 }
 
 
 template<typename Dtype>
 void NVTransformationLayer<Dtype>::visualize_bboxlist(
-    const Mat3v& img, 
+    const Mat3v& img,
     const Mat3v& img_aug,
     const vector<BboxLabel >& bboxlist,
     const vector<BboxLabel >& bboxlist_aug,
@@ -848,18 +848,18 @@ void NVTransformationLayer<Dtype>::visualize_bboxlist(
   // create buffer for visualization:
   static const size_t offset = 2;
   Mat3b vis_pane(Size(
-      max(img.cols, img_aug.cols) + offset * 2, 
+      max(img.cols, img_aug.cols) + offset * 2,
       img.rows + img_aug.rows + offset * 3
   ), 0);
   Rect img_rect(offset, offset, img.cols, img.rows);
   Rect aug_rect(offset, img.rows + offset*2, img_aug.cols, img_aug.rows);
   {
     Mat3b temp_image;
-    
+
     // place unaugmented image at top-left:
     img.convertTo(temp_image, CV_8UC3);
     temp_image.copyTo(vis_pane(img_rect));
-    
+
     // place augmented image below unaugmented image:
     img_aug.convertTo(temp_image, CV_8UC3, UINT8_MAX, UINT8_MAX/2.0);
     temp_image.copyTo(vis_pane(aug_rect));
@@ -872,8 +872,8 @@ void NVTransformationLayer<Dtype>::visualize_bboxlist(
   foreach_(const BboxLabel& label, bboxlist) {
     Point p1(label.bbox.tl().x, label.bbox.tl().y);
     Point p2(label.bbox.br().x, label.bbox.br().y);
-    const Scalar& color = coverage_->validClass(size_t(label.classNumber)) 
-        ? validClassColor 
+    const Scalar& color = coverage_->validClass(size_t(label.classNumber))
+        ? validClassColor
         : ignoredClassColor;
     // rectangle for class:
     rectangle(img_vis, p1, p2, color, 1, 8);
@@ -882,12 +882,12 @@ void NVTransformationLayer<Dtype>::visualize_bboxlist(
     ss << size_t(label.classNumber);
     setLabel(img_vis, ss.str(), p1, 0.5);
   }
-  
-  // label augmented ground-truth by draw coverage label visualization 
+
+  // label augmented ground-truth by draw coverage label visualization
   //  in-place:
   Mat3b aug_vis(vis_pane, aug_rect);
   coverage_->visualize(transformed_label, aug_vis);
-  
+
   // draw box around original and augmented image panes:
   rectangle(vis_pane, img_rect.tl(), img_rect.br(), Scalar(255, 255, 255), 1);
   rectangle(vis_pane, aug_rect.tl(), aug_rect.br(), Scalar(255, 255, 255), 1);
@@ -900,7 +900,7 @@ void NVTransformationLayer<Dtype>::visualize_bboxlist(
         << " crop=" << as.crop.x << "," << as.crop.y
         << " scale=" << setprecision(2) << as.scale
         << " rot=" << setprecision(2) << as.degree
-        << " flip=" << (as.flip ? "y" : "n") 
+        << " flip=" << (as.flip ? "y" : "n")
         << " sat=" << setprecision(2) << as.saturation
         << " hue=" << setprecision(2) << as.hue_rotation;
 

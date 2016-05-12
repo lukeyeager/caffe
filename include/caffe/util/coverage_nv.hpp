@@ -22,12 +22,12 @@ namespace caffe {
 
 template<typename Dtype>
 class CoverageGenerator;
-  
+
 template<typename Dtype>
 struct BboxLabel_ {
   typedef Rect_<Dtype> Rectv;
   typedef Point3_<Dtype> Point3v;
-  
+
   // BboxLabel[0]  = boundingbox topleft X (objective)
   // BboxLabel[1]  = boundingbox topleft Y
   // BboxLabel[2]  = boundingbox width
@@ -73,7 +73,7 @@ public:
   Dtype& obj_norm;
   //coverage classes:
   vector<reference_wrapper<Dtype> > coverages;
-  
+
   TransformedLabel_(
       const CoverageGenerator<Dtype>& coverageGenerator,
       Dtype* transformedLabels,
@@ -87,7 +87,7 @@ template <typename Dtype>
 class CoverageRegion_ {
 public:
   typedef Rect_<Dtype> Rectv;
-  
+
   virtual ~CoverageRegion_() {};
 
   virtual Dtype area() const = 0;
@@ -104,15 +104,15 @@ public:
   typedef BboxLabel_<Dtype> BboxLabel;
   typedef TransformedLabel_<Dtype> TransformedLabel;
   typedef CoverageRegion_<Dtype> CoverageRegion;
-  typedef typename vector<reference_wrapper<Dtype> >::const_iterator 
+  typedef typename vector<reference_wrapper<Dtype> >::const_iterator
       coverage_iterator;
   typedef map<size_t, size_t> LabelMap;
-  
+
   static const size_t TRANSFORMED_LABEL_SIZE = 8;
-  
+
   explicit CoverageGenerator(const NVGroundTruthParameter& param);
   virtual ~CoverageGenerator() {};
-  
+
   /**
    * @brief computes gridbox labels from a list of bounding boxes.
    */
@@ -120,37 +120,37 @@ public:
       Dtype* transformedLabels,
       const vector <BboxLabel>& bboxlist
   ) const;
-  
+
   inline Vec3i dimensions() const {
     return Vec3i(
-        label_size_, 
-        gridROI_.height, 
+        label_size_,
+        gridROI_.height,
         gridROI_.width
     );
   }
-  
+
   inline bool validClass(size_t iClass) const {
     return labels_.count(iClass) > 0;
   }
-  
+
   /**
-   * @brief Visualize the coverage regions represented by a gridbox. Labels are 
+   * @brief Visualize the coverage regions represented by a gridbox. Labels are
    * superimposed onto the Mat3b object provided.
    */
   virtual void visualize(
       const Dtype* transformedLabels,
       Mat3b& img
   ) const;
-  
+
   /**
    * @brief Constructs a CoverageGenerator provided settings passed via a
    * TransformationParameter object.
    * @return a pointer to the created object. Caller assumes ownership.
    */
   static CoverageGenerator<Dtype>* create(const NVGroundTruthParameter& param);
-  
+
 protected:
-  
+
   /**
    * @brief Produce a coverage region from a bounding box defining that region.
    * Coverage region must exist only within the defined bounding box.
@@ -159,57 +159,57 @@ protected:
   virtual CoverageRegion* coverageRegion(
       const Rectv& boundingBox
   ) const = 0;
-  
-  
+
+
   /**
    * @brief Converts an image-space bounding box to the proper coverage region
    * bounding box defined by this object's TransformationParameters.
    * @param transformedLabels bounds of detection.
    */
   virtual Rectv coverageBoundingBox(const Rectv& boundingBox) const;
-  
+
   /**
    * @return the inverse of the area of a given coverage region, in gridspace.
    */
   virtual Dtype objectNormValue(
       const CoverageRegion& coverageRegion
   ) const;
-  
+
   /**
    * @brief Zeroes all data represented by this gridbox array.
    */
   virtual void clearLabel(Dtype* transformedLabels) const;
-  
+
   /**
    * @brief transforms an imagespace rectangle into a gridspace rectangle,
-   * ensuring that the gridspace rectangle is always larger than its 
+   * ensuring that the gridspace rectangle is always larger than its
    * corresponding imagespace rectangle.
    */
   virtual Rect imageRectToGridRect(const Rectv& area) const;
-  
+
   /**
-   * @brief Retrieves a gridbox label specification at the given x and y 
+   * @brief Retrieves a gridbox label specification at the given x and y
    * coordinates.
    *
    * @param x x-coord
    * @param y y-coord
    */
   TransformedLabel transformedLabelAt(
-      Dtype* transformedLabels, 
-      size_t x, 
+      Dtype* transformedLabels,
+      size_t x,
       size_t y
   ) const;
-  
+
   Scalar bboxToColor(const Point2i& tl, const Point2i& br) const;
-  
+
   LabelMap assignLabels(
       const NVGroundTruthParameter& g_param_
   ) const;
-  
+
   size_t findNumLabels(const LabelMap& labels) const;
-  
+
   vector<BboxLabel> pruneBboxes(const vector<BboxLabel>& labels) const;
-  
+
   const NVGroundTruthParameter param_;
   const Rectv imageROI_;
   const Rect gridROI_;
@@ -218,7 +218,7 @@ protected:
   const Dtype minObjNorm_;
   const LabelMap labels_;
   const size_t label_size_;
-  
+
   friend class TransformedLabel_<Dtype>;
 };
 
@@ -227,7 +227,7 @@ template <typename Dtype>
 class RectangularCoverageRegion: public CoverageRegion_<Dtype> {
 public:
   typedef Rect_<Dtype> Rectv;
-  
+
   RectangularCoverageRegion(const Rectv& _region) : region(_region) {};
 
   virtual Dtype area() const { return region.area(); }
@@ -243,14 +243,14 @@ template <typename Dtype>
 class RectangularCoverageGenerator: public CoverageGenerator<Dtype> {
 public:
   typedef Rect_<Dtype> Rectv;
-  
+
   explicit RectangularCoverageGenerator(const NVGroundTruthParameter& param)
-    : CoverageGenerator<Dtype>(param) 
-  { 
+    : CoverageGenerator<Dtype>(param)
+  {
   };
-  
+
 protected:
-  
+
   virtual CoverageRegion_<Dtype>* coverageRegion(
       const Rectv& boundingBox
   ) const {
