@@ -1,5 +1,5 @@
-#ifndef CAFFE_DATA_TRANSFORMER_NV_HPP
-#define	CAFFE_DATA_TRANSFORMER_NV_HPP
+#ifndef DETECTNET_TRANSFORMATION_HPP
+#define DETECTNET_TRANSFORMATION_HPP
 
 #include <vector>
 #include <boost/array.hpp>
@@ -11,7 +11,7 @@ using namespace cv;
 #include "caffe/blob.hpp"
 #include "caffe/common.hpp"
 #include "caffe/proto/caffe.pb.h"
-#include "layer.hpp"
+#include "caffe/layer.hpp"
 
 namespace caffe {
 
@@ -30,7 +30,7 @@ struct AugmentSelection;
  * scaling, mirroring, substracting the image mean...
  */
 template <typename Dtype>
-class NVTransformationLayer : public Layer<Dtype> {
+class DetectNetTransformationLayer : public Layer<Dtype> {
 public:
   typedef Size_<Dtype> Size2v;
   typedef Point_<Dtype> Point2v;
@@ -40,16 +40,16 @@ public:
   typedef Mat_<Vec3v> Mat3v;
   typedef BboxLabel_<Dtype> BboxLabel;
 
-  explicit NVTransformationLayer(const LayerParameter& param);
+  explicit DetectNetTransformationLayer(const LayerParameter& param);
 
-  virtual ~NVTransformationLayer() {};
+  virtual ~DetectNetTransformationLayer() {};
 
   virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
   virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
 
-  virtual inline const char* type() const { return "NVTransformation"; }
+  virtual inline const char* type() const { return "DetectNetTransformation"; }
   virtual inline int ExactNumBottomBlobs() const { return 2; }
   virtual inline int ExactNumTopBlobs() const { return 2; }
 
@@ -172,4 +172,4 @@ protected:
 
 }  // namespace caffe
 
-#endif	/* CAFFE_DATA_TRANSFORMER_NV_HPP */
+#endif	/* DETECTNET_TRANSFORMATION_HPP */

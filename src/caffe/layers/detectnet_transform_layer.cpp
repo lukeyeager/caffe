@@ -18,7 +18,7 @@ using namespace cv;
 #include "caffe/util/io.hpp"
 #include "caffe/util/math_functions.hpp"
 #include "caffe/util/rng.hpp"
-#include "caffe/nv_transformer.hpp"
+#include "caffe/layers/detectnet_transform_layer.hpp"
 #include "caffe/util/coverage_nv.hpp"
 #include "caffe/util/ocv_labels.hpp"
 
@@ -42,7 +42,7 @@ struct AugmentSelection
 
 
 template<typename Dtype>
-NVTransformationLayer<Dtype>::NVTransformationLayer(
+DetectNetTransformationLayer<Dtype>::DetectNetTransformationLayer(
     const LayerParameter& param
 ) :
     Layer<Dtype>(param),
@@ -57,7 +57,7 @@ NVTransformationLayer<Dtype>::NVTransformationLayer(
 
 
 template <typename Dtype>
-void NVTransformationLayer<Dtype>::LayerSetUp(
+void DetectNetTransformationLayer<Dtype>::LayerSetUp(
     const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top
 ) {
@@ -75,7 +75,7 @@ void NVTransformationLayer<Dtype>::LayerSetUp(
 
 
 template<typename Dtype>
-void NVTransformationLayer<Dtype>::retrieveMeanImage(Size dimensions) {
+void DetectNetTransformationLayer<Dtype>::retrieveMeanImage(Size dimensions) {
   CHECK(t_param_.has_mean_file());
 
   const string& mean_file = t_param_.mean_file();
@@ -96,7 +96,7 @@ void NVTransformationLayer<Dtype>::retrieveMeanImage(Size dimensions) {
 
 
 template<typename Dtype>
-void NVTransformationLayer<Dtype>::retrieveMeanChannels() {
+void DetectNetTransformationLayer<Dtype>::retrieveMeanChannels() {
   switch(t_param_.mean_value_size()) {
     case 1:
       mean_values_.fill(t_param_.mean_value(0) / Dtype(UINT8_MAX));
@@ -115,7 +115,7 @@ void NVTransformationLayer<Dtype>::retrieveMeanChannels() {
 
 
 template<typename Dtype>
-void NVTransformationLayer<Dtype>::Reshape(
+void DetectNetTransformationLayer<Dtype>::Reshape(
     const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top
 ) {
@@ -148,8 +148,8 @@ void NVTransformationLayer<Dtype>::Reshape(
 
 
 template<typename Dtype>
-typename NVTransformationLayer<Dtype>::Mat3v
-NVTransformationLayer<Dtype>::dataToMat(
+typename DetectNetTransformationLayer<Dtype>::Mat3v
+DetectNetTransformationLayer<Dtype>::dataToMat(
     const Dtype* _data,
     Size dimensions
 ) const {
@@ -176,8 +176,8 @@ NVTransformationLayer<Dtype>::dataToMat(
 
 
 template<typename Dtype>
-vector<typename NVTransformationLayer<Dtype>::Mat3v>
-NVTransformationLayer<Dtype>::blobToMats(
+vector<typename DetectNetTransformationLayer<Dtype>::Mat3v>
+DetectNetTransformationLayer<Dtype>::blobToMats(
     const Blob<Dtype>& images
 ) const {
   CHECK_EQ(images.channels(), 3);
@@ -199,8 +199,8 @@ NVTransformationLayer<Dtype>::blobToMats(
 
 
 template<typename Dtype>
-vector<vector<typename NVTransformationLayer<Dtype>::BboxLabel> >
-NVTransformationLayer<Dtype>::blobToLabels(
+vector<vector<typename DetectNetTransformationLayer<Dtype>::BboxLabel> >
+DetectNetTransformationLayer<Dtype>::blobToLabels(
     const Blob<Dtype>& labels
 ) const {
   vector<vector<BboxLabel > > result; result.reserve(labels.num());
@@ -232,7 +232,7 @@ struct toDtype : public std::unary_function<float, Dtype> {
   Dtype operator() (const Vec<Dtype, 1>& value) { return value(0); }
 };
 template<typename Dtype>
-void NVTransformationLayer<Dtype>::matToBlob(
+void DetectNetTransformationLayer<Dtype>::matToBlob(
     const Mat3v& source,
     Dtype* destination
 ) const {
@@ -256,7 +256,7 @@ void NVTransformationLayer<Dtype>::matToBlob(
 
 
 template<typename Dtype>
-void NVTransformationLayer<Dtype>::matsToBlob(
+void DetectNetTransformationLayer<Dtype>::matsToBlob(
     const vector<Mat3v>& _source,
     Blob<Dtype>& _dest
 ) const {
@@ -271,7 +271,7 @@ void NVTransformationLayer<Dtype>::matsToBlob(
 
 
 template<typename Dtype>
-void NVTransformationLayer<Dtype>::pixelMeanSubtraction(
+void DetectNetTransformationLayer<Dtype>::pixelMeanSubtraction(
     Mat3v& source
 ) const {
   source -= data_mean_;
@@ -279,7 +279,7 @@ void NVTransformationLayer<Dtype>::pixelMeanSubtraction(
 
 
 template<typename Dtype>
-void NVTransformationLayer<Dtype>::channelMeanSubtraction(
+void DetectNetTransformationLayer<Dtype>::channelMeanSubtraction(
     Mat3v& source
 ) const {
   vector<Mat1f> channels;
@@ -292,7 +292,7 @@ void NVTransformationLayer<Dtype>::channelMeanSubtraction(
 
 
 template<typename Dtype>
-void NVTransformationLayer<Dtype>::meanSubtract(Mat3v& source) const {
+void DetectNetTransformationLayer<Dtype>::meanSubtract(Mat3v& source) const {
   if (t_param_.has_mean_file()) {
     pixelMeanSubtraction(source);
   } else if (t_param_.mean_value_size() != 0) {
@@ -302,7 +302,7 @@ void NVTransformationLayer<Dtype>::meanSubtract(Mat3v& source) const {
 
 
 template<typename Dtype>
-Dtype NVTransformationLayer<Dtype>::randDouble() {
+Dtype DetectNetTransformationLayer<Dtype>::randDouble() {
   CHECK(rng_);
   rng_t* rng =
       static_cast<rng_t*>(rng_->generator());
@@ -313,7 +313,7 @@ Dtype NVTransformationLayer<Dtype>::randDouble() {
 
 
 template<typename Dtype>
-void NVTransformationLayer<Dtype>::Forward_cpu(
+void DetectNetTransformationLayer<Dtype>::Forward_cpu(
     const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top
 ) {
@@ -345,7 +345,7 @@ void NVTransformationLayer<Dtype>::Forward_cpu(
 }
 
 template<typename Dtype>
-void NVTransformationLayer<Dtype>::transform(
+void DetectNetTransformationLayer<Dtype>::transform(
     const Mat3v& img,
     const vector<BboxLabel >& bboxlist,
     Mat3v& img_aug,
@@ -418,7 +418,7 @@ void NVTransformationLayer<Dtype>::transform(
 
 
 template<typename Dtype>
-float NVTransformationLayer<Dtype>::augmentation_scale(
+float DetectNetTransformationLayer<Dtype>::augmentation_scale(
     const Mat3v& img_src,
     Mat3v& img_dst,
     const vector<BboxLabel >& bboxList,
@@ -452,7 +452,7 @@ float NVTransformationLayer<Dtype>::augmentation_scale(
 
 
 template<typename Dtype>
-void NVTransformationLayer<Dtype>::transform_scale(
+void DetectNetTransformationLayer<Dtype>::transform_scale(
     const Mat3v& img,
     Mat3v& img_temp,
     const vector<BboxLabel >& bboxList,
@@ -488,7 +488,7 @@ void NVTransformationLayer<Dtype>::transform_scale(
 
 
 template<typename Dtype>
-Point NVTransformationLayer<Dtype>::augmentation_crop(
+Point DetectNetTransformationLayer<Dtype>::augmentation_crop(
     const Mat3v& img_src,
     Mat3v& img_dst,
     const vector<BboxLabel >& bboxList,
@@ -534,7 +534,7 @@ Point NVTransformationLayer<Dtype>::augmentation_crop(
 
 
 template<typename Dtype>
-void NVTransformationLayer<Dtype>::transform_crop(
+void DetectNetTransformationLayer<Dtype>::transform_crop(
     const Mat3v& img_src,
     Mat3v& img_dst,
     const vector<BboxLabel>& bboxlist,
@@ -592,7 +592,7 @@ void NVTransformationLayer<Dtype>::transform_crop(
 
 
 template<typename Dtype>
-bool NVTransformationLayer<Dtype>::augmentation_flip(
+bool DetectNetTransformationLayer<Dtype>::augmentation_flip(
     const Mat3v& img_src,
     Mat3v& img_aug,
     const vector<BboxLabel >& bboxlist,
@@ -623,8 +623,8 @@ bool NVTransformationLayer<Dtype>::augmentation_flip(
 
 
 template<typename Dtype>
-typename NVTransformationLayer<Dtype>::Mat1v
-NVTransformationLayer<Dtype>::getTransformationMatrix(
+typename DetectNetTransformationLayer<Dtype>::Mat1v
+DetectNetTransformationLayer<Dtype>::getTransformationMatrix(
     Rect region,
     Dtype rotation
 ) const {
@@ -655,7 +655,7 @@ NVTransformationLayer<Dtype>::getTransformationMatrix(
 
 
 template<typename Dtype>
-Rect NVTransformationLayer<Dtype>::getBoundingRect(
+Rect DetectNetTransformationLayer<Dtype>::getBoundingRect(
     Rect region,
     Dtype rotation
 ) const {
@@ -667,7 +667,7 @@ Rect NVTransformationLayer<Dtype>::getBoundingRect(
 
 
 template<typename Dtype>
-float NVTransformationLayer<Dtype>::augmentation_rotate(
+float DetectNetTransformationLayer<Dtype>::augmentation_rotate(
     const Mat3v& img_src,
     Mat3v& img_aug,
     const vector<BboxLabel >& bboxList,
@@ -737,7 +737,7 @@ float NVTransformationLayer<Dtype>::augmentation_rotate(
 
 
 template<typename Dtype>
-float NVTransformationLayer<Dtype>::augmentation_hueRotation(
+float DetectNetTransformationLayer<Dtype>::augmentation_hueRotation(
     const Mat3v& img,
     Mat3v& result
 ) {
@@ -789,7 +789,7 @@ float NVTransformationLayer<Dtype>::augmentation_hueRotation(
 
 
 template<typename Dtype>
-float NVTransformationLayer<Dtype>::augmentation_desaturation(
+float DetectNetTransformationLayer<Dtype>::augmentation_desaturation(
     const Mat3v& img,
     Mat3v& result
 ) {
@@ -837,7 +837,7 @@ float NVTransformationLayer<Dtype>::augmentation_desaturation(
 
 
 template<typename Dtype>
-void NVTransformationLayer<Dtype>::visualize_bboxlist(
+void DetectNetTransformationLayer<Dtype>::visualize_bboxlist(
     const Mat3v& img,
     const Mat3v& img_aug,
     const vector<BboxLabel >& bboxlist,
@@ -923,7 +923,7 @@ void NVTransformationLayer<Dtype>::visualize_bboxlist(
   cnt++;
 }
 
-INSTANTIATE_CLASS(NVTransformationLayer);
-REGISTER_LAYER_CLASS(NVTransformation);
+INSTANTIATE_CLASS(DetectNetTransformationLayer);
+REGISTER_LAYER_CLASS(DetectNetTransformation);
 
 }
