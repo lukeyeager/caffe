@@ -403,9 +403,9 @@ message LayerParameter {
   optional WindowDataParameter window_data_param = 129;
 
   // NVIDIA PARAMETERS (Start with 68 because NV is 68 on an old-style phone)
-  optional NVGroundTruthParameter nvgroundtruth_param = 6801;
-  optional NVAugmentationParameter nvaugmentation_param = 6802;
-  optional L1LossParameter l1loss_param = 6803;
+  optional L1LossParameter l1loss_param = 6801;
+  optional DetectNetGroundTruthParameter detectnet_groundtruth_param = 6802;
+  optional DetectNetAugmentationParameter detectnet_augmentation_param = 6803;
 }
 
 // Message that stores parameters used to apply transformation
@@ -431,7 +431,7 @@ message TransformationParameter {
   optional bool force_gray = 7 [default = false];
 }
 // Message that stores parameters used to create gridbox ground truth
-message NVGroundTruthParameter {
+message DetectNetGroundTruthParameter {
   // stride of gridbox with respect to image size
   optional uint32 stride = 1 [default = 4];
   // coverage region scale with respect to bounding box size
@@ -481,7 +481,7 @@ message NVGroundTruthParameter {
 
 // Message that stores parameters used to apply image and label augmentations
 // specific to NVDataLayer's online augmentation module
-message NVAugmentationParameter {
+message DetectNetAugmentationParameter {
   // probability that a random crop of the training image will be taken at test
   //  time. If image dimensions are less than input size and random cropping is
   //  off, then the image will be scaled deterministically to the input size.

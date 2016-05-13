@@ -157,8 +157,8 @@ protected:
   void pixelMeanSubtraction(Mat3v& source) const;
   void channelMeanSubtraction(Mat3v& source) const;
 
-  NVAugmentationParameter a_param_;
-  NVGroundTruthParameter g_param_;
+  DetectNetAugmentationParameter a_param_;
+  DetectNetGroundTruthParameter g_param_;
   TransformationParameter t_param_;
 
   shared_ptr<CoverageGenerator<Dtype> > coverage_;

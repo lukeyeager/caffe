@@ -19,7 +19,7 @@ using namespace cv;
 #include "caffe/util/math_functions.hpp"
 #include "caffe/util/rng.hpp"
 #include "caffe/layers/detectnet_transform_layer.hpp"
-#include "caffe/util/coverage_nv.hpp"
+#include "caffe/util/detectnet_coverage.hpp"
 #include "caffe/util/ocv_labels.hpp"
 
 using boost::array;
@@ -46,10 +46,10 @@ DetectNetTransformationLayer<Dtype>::DetectNetTransformationLayer(
     const LayerParameter& param
 ) :
     Layer<Dtype>(param),
-    a_param_(param.nvaugmentation_param()),
-    g_param_(param.nvgroundtruth_param()),
+    a_param_(param.detectnet_augmentation_param()),
+    g_param_(param.detectnet_groundtruth_param()),
     t_param_(param.transform_param()),
-    coverage_(CoverageGenerator<Dtype>::create(param.nvgroundtruth_param())),
+    coverage_(CoverageGenerator<Dtype>::create(param.detectnet_groundtruth_param())),
     phase_(param.phase()),
     rng_(new Caffe::RNG(caffe_rng_rand()))
 {

@@ -1,5 +1,5 @@
-#ifndef COVERAGE_NV_HPP
-#define COVERAGE_NV_HPP
+#ifndef DETECTNET_COVERAGE_HPP
+#define DETECTNET_COVERAGE_HPP
 
 #include <vector>
 #include <map>
@@ -110,7 +110,7 @@ public:
 
   static const size_t TRANSFORMED_LABEL_SIZE = 8;
 
-  explicit CoverageGenerator(const NVGroundTruthParameter& param);
+  explicit CoverageGenerator(const DetectNetGroundTruthParameter& param);
   virtual ~CoverageGenerator() {};
 
   /**
@@ -147,7 +147,7 @@ public:
    * TransformationParameter object.
    * @return a pointer to the created object. Caller assumes ownership.
    */
-  static CoverageGenerator<Dtype>* create(const NVGroundTruthParameter& param);
+  static CoverageGenerator<Dtype>* create(const DetectNetGroundTruthParameter& param);
 
 protected:
 
@@ -203,14 +203,14 @@ protected:
   Scalar bboxToColor(const Point2i& tl, const Point2i& br) const;
 
   LabelMap assignLabels(
-      const NVGroundTruthParameter& g_param_
+      const DetectNetGroundTruthParameter& g_param_
   ) const;
 
   size_t findNumLabels(const LabelMap& labels) const;
 
   vector<BboxLabel> pruneBboxes(const vector<BboxLabel>& labels) const;
 
-  const NVGroundTruthParameter param_;
+  const DetectNetGroundTruthParameter param_;
   const Rectv imageROI_;
   const Rect gridROI_;
   const Dtype minCoverage_;
@@ -244,7 +244,7 @@ class RectangularCoverageGenerator: public CoverageGenerator<Dtype> {
 public:
   typedef Rect_<Dtype> Rectv;
 
-  explicit RectangularCoverageGenerator(const NVGroundTruthParameter& param)
+  explicit RectangularCoverageGenerator(const DetectNetGroundTruthParameter& param)
     : CoverageGenerator<Dtype>(param)
   {
   };
@@ -261,4 +261,4 @@ protected:
 
 } // namespace caffe
 
-#endif /* COVERAGE_NV_HPP */
+#endif /* DETECTNET_COVERAGE_HPP */

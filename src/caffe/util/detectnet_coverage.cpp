@@ -10,7 +10,7 @@ using namespace cv;
 #include <boost/ref.hpp>
 
 #include "caffe/common.hpp"
-#include "caffe/util/coverage_nv.hpp"
+#include "caffe/util/detectnet_coverage.hpp"
 #include "caffe/util/ocv_labels.hpp"
 
 using boost::array;
@@ -37,7 +37,7 @@ void zeroCoverage(vector<reference_wrapper<Dtype> >& coverages) {
 
 template<typename Dtype>
 CoverageGenerator<Dtype>::CoverageGenerator(
-    const NVGroundTruthParameter& param
+    const DetectNetGroundTruthParameter& param
 ) : param_(param),
     imageROI_(0, 0, (Dtype) param.image_size_x(), (Dtype) param.image_size_y()),
     gridROI_(
@@ -57,7 +57,7 @@ CoverageGenerator<Dtype>::CoverageGenerator(
 
 template<typename Dtype>
 CoverageGenerator<Dtype>* CoverageGenerator<Dtype>::create(
-    const NVGroundTruthParameter& param
+    const DetectNetGroundTruthParameter& param
 ) {
   switch(param.coverage_type()) {
     default:
@@ -65,7 +65,7 @@ CoverageGenerator<Dtype>* CoverageGenerator<Dtype>::create(
           << "Unknown coverage type specified \""
           << param.coverage_type()
           << "\", defaulting to rectangular";
-    case NVGroundTruthParameter_CoverageType_RECTANGULAR:
+    case DetectNetGroundTruthParameter_CoverageType_RECTANGULAR:
       return new RectangularCoverageGenerator<Dtype>(param);
   }
 }
@@ -86,11 +86,11 @@ size_t CoverageGenerator<Dtype>::findNumLabels(
 template<typename Dtype>
 typename CoverageGenerator<Dtype>::LabelMap
 CoverageGenerator<Dtype>::assignLabels(
-    const NVGroundTruthParameter& g_param_
+    const DetectNetGroundTruthParameter& g_param_
 ) const {
   LabelMap result;
   for (size_t iClass = 0; iClass != g_param_.object_class_size(); ++iClass) {
-    const NVGroundTruthParameter_ClassMapping& mapping =
+    const DetectNetGroundTruthParameter_ClassMapping& mapping =
         g_param_.object_class(iClass);
     result[mapping.src()] = mapping.dst();
   }
@@ -188,7 +188,7 @@ CoverageGenerator<Dtype>::coverageBoundingBox(const Rectv& boundingBox) const {
   switch(param_.gridbox_type()) {
     //gridbox_min: ensure coverage region is no larger than the size of the
     // bounding box, but no smaller than a certain area in # of pixels
-    case NVGroundTruthParameter_GridboxType_GRIDBOX_MIN:
+    case DetectNetGroundTruthParameter_GridboxType_GRIDBOX_MIN:
     {
       Dtype min_cvg_len = this->param_.min_cvg_len();
       shrunkSize.width = min(
@@ -203,7 +203,7 @@ CoverageGenerator<Dtype>::coverageBoundingBox(const Rectv& boundingBox) const {
     }
     //gridbox_max: ensure coverage region is no smaller than a certain area in
     // # of pixels
-    case NVGroundTruthParameter_GridboxType_GRIDBOX_MAX:
+    case DetectNetGroundTruthParameter_GridboxType_GRIDBOX_MAX:
     {
       Dtype max_cvg_len = this->param_.max_cvg_len();
       shrunkSize.width = min(max_cvg_len, shrunkSize.width);
