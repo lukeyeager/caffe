@@ -3,6 +3,16 @@ set(CMAKE_SOURCE_DIR ..)
 set(LINT_COMMAND ${CMAKE_SOURCE_DIR}/scripts/cpp_lint.py)
 set(SRC_FILE_EXTENSIONS h hpp hu c cpp cu cc)
 set(EXCLUDE_FILE_EXTENSTIONS pb.h pb.cc)
+set(EXCLUDE_FILES
+    "include/caffe/layers/detectnet_transform_layer.hpp"
+    "include/caffe/layers/l1_loss_layer.hpp"
+    "include/caffe/util/detectnet_coverage.hpp"
+    "include/caffe/util/ocv_labels.hpp"
+    "src/caffe/layers/detectnet_transform_layer.cpp"
+    "src/caffe/layers/l1_loss_layer.cpp"
+    "src/caffe/util/detectnet_coverage_rectangular.cpp"
+    "src/caffe/util/ocv_labels.cpp"
+    )
 set(LINT_DIRS include src/caffe examples tools python matlab)
 
 cmake_policy(SET CMP0009 NEW)  # suppress cmake warning
@@ -18,6 +28,10 @@ endforeach()
 # find all files that should be excluded
 foreach(ext ${EXCLUDE_FILE_EXTENSTIONS})
     file(GLOB_RECURSE FOUND_FILES ${CMAKE_SOURCE_DIR}/*.${ext})
+    set(EXCLUDED_FILES ${EXCLUDED_FILES} ${FOUND_FILES})
+endforeach()
+foreach(filename ${EXCLUDE_FILES})
+    file(GLOB_RECURSE FOUND_FILES ${CMAKE_SOURCE_DIR}/*${filename})
     set(EXCLUDED_FILES ${EXCLUDED_FILES} ${FOUND_FILES})
 endforeach()
 
