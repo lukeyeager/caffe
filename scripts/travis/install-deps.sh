@@ -99,7 +99,14 @@ if $WITH_CUDA ; then
   ln -s /usr/local/cuda-$CUDA_VERSION /usr/local/cuda
 
   if $WITH_CUDNN ; then
-    apt-get install -y --no-install-recommends libcudnn5-dev
+    if [ "$CUDNN_VERSION" = "4" ]; then
+      apt-get install -y --no-install-recommends libcudnn4-dev
+    elif [ "$CUDNN_VERSION" = "5" ]; then
+      apt-get install -y --no-install-recommends libcudnn5-dev
+    else
+      echo Invalid CUDNN_VERSION \"$CUDNN_VERSION\" >&2
+      exit 1
+    fi
   fi
 fi
 

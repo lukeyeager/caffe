@@ -19,13 +19,15 @@ env:
 #   - BUILD_NAME="python3-make" WITH_PYTHON3=true
     - BUILD_NAME="no-io-make" WITH_IO=false
     - BUILD_NAME="cuda-make" WITH_CUDA=true
-    - BUILD_NAME="cudnn-make" WITH_CUDA=true WITH_CUDNN=true
+    - BUILD_NAME="cudnn4-make" WITH_CUDA=true WITH_CUDNN=true CUDNN_VERSION=4
+    - BUILD_NAME="cudnn5-make" WITH_CUDA=true WITH_CUDNN=true
 
     - BUILD_NAME="default-cmake" WITH_CMAKE=true
     - BUILD_NAME="python3-cmake" WITH_CMAKE=true WITH_PYTHON3=true
     - BUILD_NAME="no-io-cmake" WITH_CMAKE=true WITH_IO=false
     - BUILD_NAME="cuda-cmake" WITH_CMAKE=true WITH_CUDA=true
-    - BUILD_NAME="cudnn-cmake" WITH_CMAKE=true WITH_CUDA=true WITH_CUDNN=true
+    - BUILD_NAME="cudnn4-cmake" WITH_CMAKE=true WITH_CUDA=true WITH_CUDNN=true CUDNN_VERSION=4
+    - BUILD_NAME="cudnn5-cmake" WITH_CMAKE=true WITH_CUDA=true WITH_CUDNN=true
 
 cache:
   apt: true
