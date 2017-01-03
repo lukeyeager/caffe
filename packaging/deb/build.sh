@@ -66,7 +66,9 @@ if [ -z "$DEBIAN_REVISION" ]; then
     if [[ -z "$CUDA_VERSION" ]]; then
         CUDA_VERSION=$(docker run --rm ${DOCKER_BASE_TAG} bash -c "readlink /usr/local/cuda-*/lib*/libcudart.so | sort -u | cut -c14-")
     fi
-    DEBIAN_REVISION=1${OS_NAME}+cuda${CUDA_VERSION}
+    # XXX override
+    #DEBIAN_REVISION=1${OS_NAME}+cuda${CUDA_VERSION}
+    DEBIAN_REVISION=3${OS_NAME}+cuda${CUDA_VERSION}
 fi
 echo "DEBIAN_REVISION: $DEBIAN_REVISION"
 
